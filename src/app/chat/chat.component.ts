@@ -3,6 +3,7 @@ import { MatCardModule } from '@angular/material/card';
 import { ChatService } from './chat.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SafeHtmlPipe } from './safeHtml.pipe';
 
 interface Message {
   content: string;
@@ -16,11 +17,12 @@ interface BotResponse {
   code?: string;
   codeLanguage?: string;
   timestamp: Date;
+  textComplete: boolean; // Nova propriedade para controlar se o texto foi completamente digitado
 }
 
 @Component({
   selector: 'app-chat',
-  imports: [MatCardModule, CommonModule, FormsModule],
+  imports: [MatCardModule, CommonModule, FormsModule, SafeHtmlPipe],
   standalone: true,
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.css'
@@ -37,6 +39,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   botResponses: BotResponse[] = [];
   isLoading: boolean = false;
   uploadedImage: string | null = null;
+  errorMessage: string | null = null;
 
   constructor(private service: ChatService) {}
 
@@ -49,62 +52,104 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   }
 
   scrollToBottom(): void {
-    try {
-      if (this.conversationArea) {
-        this.conversationArea.nativeElement.scrollTop = this.conversationArea.nativeElement.scrollHeight;
-      }
-    } catch (err) { }
-  }
+  try {
+    if (this.conversationArea) {
+      // Usar uma animação suave para o scroll
+      this.conversationArea.nativeElement.scrollTo({
+        top: this.conversationArea.nativeElement.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  } catch (err) { }
+}
 
   criarChat(message: string): void {
     if (!message || !message.trim()) return;
-
+    this.errorMessage = null;
     // Adiciona mensagem do usuário
     this.userMessages.push({
       content: message,
       isUser: true,
       timestamp: new Date()
     });
-
     // Limpar o campo de entrada
     if (this.messageInput) {
       this.messageInput.nativeElement.value = '';
     }
-
     // Mostrar indicador de carregamento
     this.isLoading = true;
-
     // Chamar serviço existente
     this.service.chat(message).subscribe({
       next: (data) => {
         this.prompt = data;
-
-        // Adicionar resposta do bot
-        this.botResponses.push({
-          text: this.prompt.message || 'Desculpe, não entendi sua pergunta.',
-          hasCode: this.detectCodeInResponse(this.prompt.message),
-          code: this.extractCodeFromResponse(this.prompt.message),
-          codeLanguage: this.detectLanguageFromResponse(this.prompt.message),
-          timestamp: new Date()
-        });
-
+        this.typeBotResponse(this.prompt.message || 'Desculpe, não entendi sua pergunta.', this.prompt);
         this.isLoading = false;
       },
       error: (err) => {
         console.error('Erro ao enviar mensagem:', err);
         this.isLoading = false;
-
-        // Adicionar mensagem de erro
+        this.errorMessage = 'Erro ao se comunicar com o servidor. Tente novamente mais tarde.';
+        // Adicionar mensagem de erro na conversa
         this.botResponses.push({
-          text: 'Desculpe, ocorreu um erro ao processar sua solicitação.',
+          text: '❌ Erro: Não foi possível obter resposta do Floquinho. Tente novamente.',
           hasCode: false,
-          timestamp: new Date()
+          timestamp: new Date(),
+          textComplete: true
         });
       }
     });
+  }
 
-    // Remover imagem carregada (não é mais necessário)
-    // this.removeUploadedImage();
+  typeBotResponse(fullText: string, prompt: any): void {
+    let i = 0;
+    const hasCode = this.detectCodeInResponse(fullText);
+    const code = this.extractCodeFromResponse(fullText);
+    // Remover código do texto principal se existir
+    const textWithoutCode = hasCode ? fullText.replace(/```[\s\S]*?```/g, '') : fullText;
+    const codeLanguage = this.detectLanguageFromResponse(fullText);
+
+    // Processar formatação básica de Markdown para HTML
+    let formattedText = textWithoutCode
+      .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.*)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.*)$/gm, '<h1>$1</h1>')
+      // Listas com crase: - `texto`:
+      .replace(/^-\s*`([^`]+)`:/gm, '<li><code>$1</code>:</li>')
+      // Listas normais:
+      .replace(/^-\s*(.*)/gm, '<li>$1</li>')
+      // Negrito e itálico
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      // Quebra de linha
+      .replace(/\n/g, '<br>');
+    // Se houver <li>, envolver em <ul>
+    if (/<li>/.test(formattedText)) {
+      formattedText = formattedText.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
+      // Remover <br> entre <ul> e <li>
+      formattedText = formattedText.replace(/<ul><br>/g, '<ul>');
+    }
+
+    this.botResponses.push({
+      text: '',
+      hasCode,
+      code,
+      codeLanguage,
+      timestamp: new Date(),
+      textComplete: false
+    });
+
+    const idx = this.botResponses.length - 1;
+    const typing = () => {
+      if (i <= formattedText.length) {
+        this.botResponses[idx].text = formattedText.slice(0, i);
+        i++;
+        setTimeout(typing, 8); // velocidade da digitação
+      } else {
+        // Marcar o texto como completo quando a digitação terminar
+        this.botResponses[idx].textComplete = true;
+      }
+    };
+    typing();
   }
 
   // Funções auxiliares para detectar e extrair código
@@ -135,11 +180,31 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     return match ? match[1] : 'code';
   }
 
-  autoResize(event: any): void {
-    const textarea = event.target;
-    textarea.style.height = 'auto';
-    textarea.style.height = (textarea.scrollHeight) + 'px';
+  handleKeyDown(event: KeyboardEvent): void {
+  // Se for Enter sem Shift, envie a mensagem
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    this.criarChat(this.messageInput.nativeElement.value);
   }
+  // Se for Enter com Shift, permita quebra de linha normalmente
+}
+
+  autoResize(event: any): void {
+  const textarea = event.target;
+  // Guardar a posição atual de scroll
+  const scrollPos = window.scrollY;
+
+  // Salvar a altura atual
+  const currentHeight = textarea.style.height;
+
+  // Redimensionar o textarea
+  textarea.style.height = 'auto';
+  const newHeight = Math.max(58, textarea.scrollHeight); // Mínimo de 58px
+  textarea.style.height = newHeight + 'px';
+
+  // Evitar que a página role quando o textarea cresce
+  window.scrollTo(0, scrollPos);
+}
 
   handleEnterKey(event: Event): void {
   const keyboardEvent = event as KeyboardEvent;
@@ -176,7 +241,8 @@ getConversation() {
         content: this.botResponses[i].text,
         code: this.botResponses[i].code,
         codeLanguage: this.botResponses[i].codeLanguage,
-        isUser: false
+        isUser: false,
+        textComplete: this.botResponses[i].textComplete
       });
     }
   }

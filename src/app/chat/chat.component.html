@@ -36,16 +36,22 @@
               </ng-template>
             </div>
             <div class="message-content">
-              <p>{{ item.content }}</p>
-              <ng-container *ngIf="item.code">
-                <div class="code-block">
-                  <div class="code-header">
-                    <span>{{ item.codeLanguage || 'code' }}</span>
-                    <button class="copy-btn" (click)="copyCode(item.code)">copiar</button>
-                  </div>
-                  <pre><code>{{ item.code }}</code></pre>
-                </div>
+              <ng-container *ngIf="item.isUser; else botHtml">
+                <p>{{ item.content }}</p>
               </ng-container>
+              <ng-template #botHtml>
+                <div [innerHTML]="item.content | safeHtml"></div>
+                <!-- Exibir código apenas quando o texto estiver completo -->
+                <ng-container *ngIf="item.code && item.textComplete">
+                  <div class="code-block">
+                    <div class="code-header">
+                      <span>{{ item.codeLanguage || 'code' }}</span>
+                      <button class="copy-btn" (click)="copyCode(item.code)">copiar</button>
+                    </div>
+                    <pre><code>{{ item.code }}</code></pre>
+                  </div>
+                </ng-container>
+              </ng-template>
             </div>
           </div>
         </ng-container>
@@ -56,11 +62,18 @@
         </div>
       </div>
 
+      <!-- Mensagem de erro -->
+      <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
+
       <!-- Área de entrada de mensagem -->
       <div class="input-area">
         <div class="message-input-container">
           <textarea id="messageInput" #messageInput class="message-input"
-          placeholder="Digite sua pergunta para o Floquinho..." rows="1" (input)="autoResize($event)" (keydown.enter)="handleEnterKey($event)"></textarea>
+            placeholder="Digite sua pergunta para o Floquinho..." rows="1"
+            (input)="autoResize($event)"
+            (keydown)="handleKeyDown($event)"></textarea>
           <button class="send-btn-inside" (click)="criarChat(messageInput.value)">
             ➤
           </button>
@@ -69,3 +82,4 @@
     </mat-card>
   </main>
 </div>
+
