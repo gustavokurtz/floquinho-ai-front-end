@@ -103,8 +103,8 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       }
     });
 
-    // Se houver imagem, remover após o envio
-    this.removeUploadedImage();
+    // Remover imagem carregada (não é mais necessário)
+    // this.removeUploadedImage();
   }
 
   // Funções auxiliares para detectar e extrair código
@@ -149,59 +149,37 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   }
 }
 
+copyCode(code: string | undefined): void {
+  if (!code) return;
+  navigator.clipboard.writeText(code).then(
+    () => {
+      // Feedback visual de cópia bem-sucedida
+      alert('Código copiado!');
+    }
+  ).catch(err => {
+    console.error('Falha ao copiar o código:', err);
+  });
+}
 
-  triggerImageUpload(): void {
-    this.fileUpload.nativeElement.click();
-  }
-
-  handleImageUpload(event: any): void {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.uploadedImage = reader.result as string;
-      };
-      reader.readAsDataURL(file);
+getConversation() {
+  const conversation = [];
+  const max = Math.max(this.userMessages.length, this.botResponses.length);
+  for (let i = 0; i < max; i++) {
+    if (this.userMessages[i]) {
+      conversation.push({
+        ...this.userMessages[i],
+        isUser: true
+      });
+    }
+    if (this.botResponses[i]) {
+      conversation.push({
+        content: this.botResponses[i].text,
+        code: this.botResponses[i].code,
+        codeLanguage: this.botResponses[i].codeLanguage,
+        isUser: false
+      });
     }
   }
-
-  removeUploadedImage(): void {
-    this.uploadedImage = null;
-    if (this.fileUpload) {
-      this.fileUpload.nativeElement.value = '';
-    }
-  }
-
-  pasteFromClipboard(): void {
-    navigator.clipboard.readText().then(
-      clipText => {
-        // Insere o texto copiado no campo de mensagem
-        const currentText = this.messageInput.nativeElement.value;
-        const cursorPos = this.messageInput.nativeElement.selectionStart;
-
-        this.messageInput.nativeElement.value =
-          currentText.slice(0, cursorPos) +
-          clipText +
-          currentText.slice(cursorPos);
-
-        // Foco no campo após colar
-        this.messageInput.nativeElement.focus();
-      }
-    ).catch(err => {
-      console.error('Falha ao acessar a área de transferência:', err);
-    });
-  }
-
-  copyCode(code: string | undefined): void {
-    if (!code) return;
-
-    navigator.clipboard.writeText(code).then(
-      () => {
-        // Feedback visual de cópia bem-sucedida
-        alert('Código copiado!');
-      }
-    ).catch(err => {
-      console.error('Falha ao copiar o código:', err);
-    });
-  }
+  return conversation;
+}
 }

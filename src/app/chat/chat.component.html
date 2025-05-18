@@ -1,73 +1,54 @@
 <div class="main-container">
   <main>
     <mat-card class="chat-card">
-      <!-- Cabeçalho do chatbot
       <mat-card-header>
         <div mat-card-avatar class="header-image"></div>
         <div class="header-content">
           <mat-card-title class="title-card">{{ title }}</mat-card-title>
           <mat-card-subtitle>Seu assistente pessoal</mat-card-subtitle>
         </div>
-      </mat-card-header> -->
+      </mat-card-header>
 
       <!-- Área de conversas -->
       <div class="conversation-area" #conversationArea>
-        <!-- Mensagem de boas-vindas inicial -->
-        <div class="message bot-message">
-          <div class="message-avatar">
-            <img src="https://i.ibb.co/39m3QfH0/floquis.png" alt="Floquinho">
-          </div>
-          <div class="message-content">
-            <p>Olá! Sou o Floquinho AI, seu assistente virtual. Como posso ajudar você hoje?</p>
-          </div>
-        </div>
-
-        <!-- Mensagens do usuário -->
-        <div class="message user-message" *ngFor="let msg of userMessages">
-          <div class="message-content">
-            <p>{{ msg.content }}</p>
-          </div>
-          <div class="message-avatar">
-            <!-- SVG de gatinho como avatar do usuário -->
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="20" cy="20" r="20" fill="#F9D8B7"/>
-              <ellipse cx="12" cy="14" rx="6" ry="8" fill="#F9D8B7"/>
-              <ellipse cx="28" cy="14" rx="6" ry="8" fill="#F9D8B7"/>
-              <ellipse cx="20" cy="26" rx="10" ry="8" fill="#F7BFA0"/>
-              <ellipse cx="16" cy="24" rx="2" ry="3" fill="#fff"/>
-              <ellipse cx="24" cy="24" rx="2" ry="3" fill="#fff"/>
-              <ellipse cx="16" cy="24" rx="1" ry="1.5" fill="#333"/>
-              <ellipse cx="24" cy="24" rx="1" ry="1.5" fill="#333"/>
-              <ellipse cx="20" cy="29" rx="2" ry="1" fill="#fff"/>
-              <path d="M18 28 Q20 30 22 28" stroke="#333" stroke-width="1.5" fill="none"/>
-              <polygon points="7,7 12,14 8,14" fill="#F7BFA0"/>
-              <polygon points="33,7 28,14 32,14" fill="#F7BFA0"/>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Respostas do bot -->
-        <div class="message bot-message" *ngFor="let resp of botResponses">
-          <div class="message-avatar">
-            <img src="https://i.ibb.co/39m3QfH0/floquis.png" alt="Floquinho">
-          </div>
-          <div class="message-content">
-            <p>{{ resp.text }}</p>
-
-            <!-- Área de código quando existir -->
-            <div class="code-block" *ngIf="resp.hasCode && resp.code">
-              <div class="code-header">
-                <span>{{ resp.codeLanguage || 'code' }}</span>
-                <button class="copy-btn" (click)="copyCode(resp.code)">
-                  copiar
-                </button>
-              </div>
-              <pre><code>{{ resp.code }}</code></pre>
+        <ng-container *ngFor="let item of getConversation()">
+          <div class="message" [ngClass]="{'user-message': item.isUser, 'bot-message': !item.isUser}">
+            <div class="message-avatar">
+              <ng-container *ngIf="item.isUser; else botAvatar">
+                <!-- SVG de gatinho como avatar do usuário -->
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="20" cy="20" r="20" fill="#F9D8B7"/>
+                  <ellipse cx="12" cy="14" rx="6" ry="8" fill="#F9D8B7"/>
+                  <ellipse cx="28" cy="14" rx="6" ry="8" fill="#F9D8B7"/>
+                  <ellipse cx="20" cy="26" rx="10" ry="8" fill="#F7BFA0"/>
+                  <ellipse cx="16" cy="24" rx="2" ry="3" fill="#fff"/>
+                  <ellipse cx="24" cy="24" rx="2" ry="3" fill="#fff"/>
+                  <ellipse cx="16" cy="24" rx="1" ry="1.5" fill="#333"/>
+                  <ellipse cx="24" cy="24" rx="1" ry="1.5" fill="#333"/>
+                  <ellipse cx="20" cy="29" rx="2" ry="1" fill="#fff"/>
+                  <path d="M18 28 Q20 30 22 28" stroke="#333" stroke-width="1.5" fill="none"/>
+                  <polygon points="7,7 12,14 8,14" fill="#F7BFA0"/>
+                  <polygon points="33,7 28,14 32,14" fill="#F7BFA0"/>
+                </svg>
+              </ng-container>
+              <ng-template #botAvatar>
+                <img src="https://i.ibb.co/39m3QfH0/floquis.png" alt="Floquinho">
+              </ng-template>
+            </div>
+            <div class="message-content">
+              <p>{{ item.content }}</p>
+              <ng-container *ngIf="item.code">
+                <div class="code-block">
+                  <div class="code-header">
+                    <span>{{ item.codeLanguage || 'code' }}</span>
+                    <button class="copy-btn" (click)="copyCode(item.code)">copiar</button>
+                  </div>
+                  <pre><code>{{ item.code }}</code></pre>
+                </div>
+              </ng-container>
             </div>
           </div>
-        </div>
-
-        <!-- Indicador de digitação quando o bot estiver processando -->
+        </ng-container>
         <div class="typing-indicator" *ngIf="isLoading">
           <div class="dot"></div>
           <div class="dot"></div>
@@ -77,34 +58,13 @@
 
       <!-- Área de entrada de mensagem -->
       <div class="input-area">
-        <div class="attachment-options">
-          <button class="attachment-btn" (click)="triggerImageUpload()">
-            📷
-          </button>
-          <button class="attachment-btn" (click)="pasteFromClipboard()">
-            📋
-          </button>
-          <input type="file" #fileUpload hidden (change)="handleImageUpload($event)" accept="image/*">
-        </div>
-
         <div class="message-input-container">
-          <textarea #messageInput class="message-input"
+          <textarea id="messageInput" #messageInput class="message-input"
           placeholder="Digite sua pergunta para o Floquinho..." rows="1" (input)="autoResize($event)" (keydown.enter)="handleEnterKey($event)"></textarea>
         </div>
-
         <button class="send-btn" (click)="criarChat(messageInput.value)">
           ➤
         </button>
-      </div>
-
-      <!-- Área de exibição de imagem carregada se houver -->
-      <div class="image-preview" *ngIf="uploadedImage">
-        <div class="preview-container">
-          <img [src]="uploadedImage" alt="Imagem carregada">
-          <button class="remove-image-btn" (click)="removeUploadedImage()">
-            ✖
-          </button>
-        </div>
       </div>
     </mat-card>
   </main>
