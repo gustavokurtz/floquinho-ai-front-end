@@ -6,7 +6,7 @@ Este é o frontend de uma aplicação web de IA para uso no dia a dia reduzindo 
 
 ## Tecnologias Utilizadas
 
-* **Angular:** Framework React para construção de aplicações web com renderização do lado do servidor (SSR) e roteamento fácil.
+* **Angular:** 
 
 ## Como Executar Localmente
 
