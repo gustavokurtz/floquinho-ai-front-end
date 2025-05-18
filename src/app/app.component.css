@@ -1,0 +1,14 @@
+/* No seu arquivo de estilos (ex.: component.css ou styles.css) */
+mat-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  flex: 0 0 auto; /* Garante que o título não cresça */
+}
+
+button {
+  background-color: rgb(105, 70, 4);
+}
