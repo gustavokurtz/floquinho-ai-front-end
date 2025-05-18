@@ -61,10 +61,10 @@
         <div class="message-input-container">
           <textarea id="messageInput" #messageInput class="message-input"
           placeholder="Digite sua pergunta para o Floquinho..." rows="1" (input)="autoResize($event)" (keydown.enter)="handleEnterKey($event)"></textarea>
+          <button class="send-btn-inside" (click)="criarChat(messageInput.value)">
+            ➤
+          </button>
         </div>
-        <button class="send-btn" (click)="criarChat(messageInput.value)">
-          ➤
-        </button>
       </div>
     </mat-card>
   </main>
