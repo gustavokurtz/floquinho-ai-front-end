@@ -7,7 +7,7 @@ import { map } from 'rxjs';
 })
 export class ChatService {
 
-  apiUrl: string = 'http://localhost:8080/chat'
+  apiUrl: string = 'https://floquinho-ai-backend.fly.dev/chat'
 
   constructor(private http: HttpClient) { }
 
